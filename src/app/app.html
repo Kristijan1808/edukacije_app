@@ -1,0 +1,448 @@
+@if (toast()) {
+  <div class="toast">{{ toast() }}</div>
+}
+
+@if (view() === 'login') {
+  <div class="auth-shell">
+    <section class="brand-panel">
+      <div class="logo big">E</div>
+      <h1>EduStudio</h1>
+      <p>
+        Kreirajte interaktivne edukacije, kvizove i SCORM pakete bez skupih licenci.
+      </p>
+
+      <div class="feature">✦ Vizualni drag & drop editor</div>
+      <div class="feature">✦ Lokalni AI uz Ollama</div>
+      <div class="feature">✦ PPTX i SCORM izvoz</div>
+    </section>
+
+    <form class="auth-card" (ngSubmit)="login()">
+      <span class="eyebrow">DOBRODOŠLI</span>
+      <h2>{{ registerMode ? 'Otvorite račun' : 'Prijavite se' }}</h2>
+
+      @if (registerMode) {
+        <label>
+          Ime
+          <input [(ngModel)]="name" name="name" required />
+        </label>
+      }
+
+      <label>
+        Email
+        <input [(ngModel)]="email" name="email" type="email" required />
+      </label>
+
+      <label>
+        Lozinka
+        <input [(ngModel)]="password" name="password" type="password" required />
+      </label>
+
+      <button class="primary" type="submit">
+        {{ registerMode ? 'Registracija' : 'Prijava' }}
+      </button>
+
+      <button
+        type="button"
+        class="link"
+        (click)="registerMode = !registerMode"
+      >
+        {{ registerMode ? 'Već imam račun' : 'Kreiraj novi račun' }}
+      </button>
+
+      <small>Demo: demo@edustudio.local / demo1234</small>
+    </form>
+  </div>
+} @else {
+  <header>
+    <div class="logo">E</div>
+    <strong>EduStudio</strong>
+
+    <nav>
+      <button
+        (click)="view.set('dashboard')"
+        [class.active]="view() === 'dashboard'"
+      >
+        Edukacije
+      </button>
+
+      <button
+        (click)="view.set('templates')"
+        [class.active]="view() === 'templates'"
+      >
+        Predlošci
+      </button>
+    </nav>
+
+    <div class="spacer"></div>
+    <button class="avatar" (click)="logout()">OD</button>
+  </header>
+
+  @if (view() === 'dashboard') {
+    <main class="page">
+      <div class="page-head">
+        <div>
+          <span class="eyebrow">MOJ RADNI PROSTOR</span>
+          <h1>Edukacije</h1>
+          <p>Kreirajte, uredite i pratite edukacije na jednom mjestu.</p>
+        </div>
+
+        <button class="primary" (click)="newCourse()">
+          ＋ Nova edukacija
+        </button>
+      </div>
+
+      <div class="toolbar">
+        <input
+          placeholder="Pretraži edukacije..."
+          [(ngModel)]="search"
+        />
+        <span>{{ filtered().length }} edukacija</span>
+      </div>
+
+      <div class="cards">
+        @for (c of filtered(); track c.id) {
+          <article class="course-card">
+            <div class="cover">
+              <span>{{ c.status }}</span>
+              <div>▰</div>
+            </div>
+
+            <div class="card-body">
+              <h3>{{ c.title }}</h3>
+              <p>{{ c.description || 'Bez opisa' }}</p>
+
+              <div class="meta">
+                {{ c.lessons?.length || 0 }} lekcija · Ažurirano
+                {{ c.updatedAt | date: 'dd.MM.yyyy.' }}
+              </div>
+
+              <div class="actions">
+                <button class="primary soft" (click)="open(c)">Uredi</button>
+                <button (click)="showReport(c)">Izvještaj</button>
+                <button class="danger" (click)="removeCourse(c)">Obriši</button>
+              </div>
+            </div>
+          </article>
+        } @empty {
+          <div class="empty">
+            <h3>Još nemate edukacija</h3>
+            <p>
+              Započnite praznom edukacijom ili upotrijebite predložak.
+            </p>
+            <button class="primary" (click)="newCourse()">
+              Kreiraj edukaciju
+            </button>
+          </div>
+        }
+      </div>
+    </main>
+  } @else if (view() === 'templates') {
+    <main class="page">
+      <div class="page-head">
+        <div>
+          <span class="eyebrow">BRZI POČETAK</span>
+          <h1>Preporučeni predlošci</h1>
+          <p>Gotove strukture koje možete potpuno prilagoditi.</p>
+        </div>
+      </div>
+
+      <div class="cards">
+        @for (t of templates(); track t.id) {
+          <article class="template-card">
+            <div class="template-icon">✦</div>
+            <span class="pill">{{ t.category }}</span>
+            <h3>{{ t.name }}</h3>
+            <p>{{ t.description }}</p>
+            <button class="primary" (click)="newCourse(t)">
+              Koristi predložak
+            </button>
+          </article>
+        }
+      </div>
+    </main>
+  } @else if (view() === 'editor' && active()) {
+    <div class="editor">
+      <aside class="left">
+        <button class="back" (click)="view.set('dashboard')">
+          ← Sve edukacije
+        </button>
+
+        <input class="course-title" [(ngModel)]="active().title" />
+
+        <p>LEKCIJE</p>
+
+        <div cdkDropList>
+          @for (l of active().lessons; track $index) {
+            <button
+              class="lesson"
+              [class.selected]="$index === activeLesson()"
+              (click)="activeLesson.set($index)"
+            >
+              <b>{{ $index + 1 }}</b>
+              <span>{{ l.title }}</span>
+              <small>{{ l.durationMin }} min</small>
+            </button>
+          }
+        </div>
+
+        <button class="add" (click)="addLesson()">＋ Dodaj lekciju</button>
+
+        <p>AI ASISTENT</p>
+
+        <textarea
+          [(ngModel)]="aiText"
+          placeholder="Zalijepite tekst materijala..."
+        ></textarea>
+
+        <button (click)="generateAi()">✨ Predloži lekcije</button>
+      </aside>
+
+      <section class="workspace">
+        <div class="editor-top">
+          <div>
+            <span class="status">{{ active().status }}</span>
+            <input [(ngModel)]="lesson().title" />
+          </div>
+
+          <div>
+            <label class="upload">
+              Učitaj materijal
+              <input type="file" hidden (change)="upload($event)" />
+            </label>
+
+            <button (click)="export('scorm')">SCORM</button>
+            <button (click)="export('pptx')">PPTX</button>
+
+            <button class="primary" (click)="save()">
+              {{ saving() ? 'Spremanje...' : 'Spremi' }}
+            </button>
+          </div>
+        </div>
+
+        <div
+          class="canvas"
+          cdkDropList
+          [cdkDropListData]="lesson().content"
+          (cdkDropListDropped)="dropBlocks($event)"
+        >
+          @for (b of lesson().content; track b.id; let i = $index) {
+            <div class="block" cdkDrag>
+              <div class="grab">⋮⋮</div>
+
+              <button class="remove" (click)="removeBlock(i)">×</button>
+
+              @switch (b.type) {
+                @case ('text') {
+                  <textarea
+                    class="text-block"
+                    [(ngModel)]="b.data.text"
+                  ></textarea>
+                }
+
+                @case ('image') {
+                  <img [src]="b.data.url" [alt]="b.data.alt" />
+                  <input
+                    [(ngModel)]="b.data.url"
+                    placeholder="URL slike"
+                  />
+                }
+
+                @case ('button') {
+                  <input [(ngModel)]="b.data.text" />
+                  <input [(ngModel)]="b.data.url" />
+
+                  <button class="primary preview-btn">
+                    {{ b.data.text }}
+                  </button>
+                }
+
+                @case ('single') {
+                  @let q = b.data;
+
+                  <input
+                    class="question"
+                    [(ngModel)]="q.question"
+                  />
+
+                  @for (o of q.options; track $index) {
+                    <label class="option">
+                      <input type="radio" disabled />
+                      <input [(ngModel)]="q.options[$index]" />
+                    </label>
+                  }
+
+                  <textarea
+                    [(ngModel)]="q.explanation"
+                    placeholder="Objašnjenje točnog odgovora"
+                  ></textarea>
+                }
+
+                @case ('multi') {
+                  @let q = b.data;
+
+                  <input
+                    class="question"
+                    [(ngModel)]="q.question"
+                  />
+
+                  @for (o of q.options; track $index) {
+                    <label class="option">
+                      <input type="checkbox" disabled />
+                      <input [(ngModel)]="q.options[$index]" />
+                    </label>
+                  }
+                }
+
+                @case ('textarea') {
+                  <input
+                    class="question"
+                    [(ngModel)]="b.data.question"
+                  />
+
+                  <textarea
+                    placeholder="Polaznik upisuje odgovor..."
+                    disabled
+                  ></textarea>
+                }
+
+                @case ('matching') {
+                  <input
+                    class="question"
+                    [(ngModel)]="b.data.question"
+                  />
+
+                  @for (p of b.data.pairs; track $index) {
+                    <div class="pair">
+                      <input [(ngModel)]="p[0]" />
+                      <span>↔</span>
+                      <input [(ngModel)]="p[1]" />
+                    </div>
+                  }
+                }
+
+                @case ('dropzone') {
+                  <input
+                    class="question"
+                    [(ngModel)]="b.data.question"
+                  />
+
+                  <div class="zones">
+                    @for (g of b.data.groups; track $index) {
+                      <div>
+                        <input [(ngModel)]="b.data.groups[$index]" />
+                        <span>Ovdje ispustite elemente</span>
+                      </div>
+                    }
+                  </div>
+                }
+              }
+            </div>
+          } @empty {
+            <div class="canvas-empty">
+              <div>＋</div>
+              <h3>Dodajte prvu komponentu</h3>
+              <p>Odaberite element s desne strane.</p>
+            </div>
+          }
+        </div>
+      </section>
+
+      <aside class="right">
+        <h3>Komponente</h3>
+        <p>Povucite ili kliknite element.</p>
+
+        <div class="palette">
+          @for (p of palette; track p[0]) {
+            <button (click)="addBlock(p[0])">
+              <b>{{ p[2] }}</b>
+              <span>{{ p[1] }}</span>
+            </button>
+          }
+        </div>
+
+        <div class="tip">
+          <b>Savjet</b>
+          <p>
+            Elemente na platnu možete povlačiti i mijenjati im redoslijed.
+          </p>
+        </div>
+      </aside>
+    </div>
+  } @else if (view() === 'reports') {
+    <main class="page">
+      <button class="back" (click)="view.set('dashboard')">
+        ← Natrag
+      </button>
+
+      <div class="page-head">
+        <div>
+          <span class="eyebrow">ANALITIKA</span>
+          <h1>{{ reportCourse?.title }}</h1>
+          <p>Pregled provedbe, prolaznosti i rezultata.</p>
+        </div>
+      </div>
+
+      @if (report) {
+        <div class="stats">
+          <article>
+            <b>{{ report.summary.assigned }}</b>
+            <span>Dodijeljeno</span>
+          </article>
+
+          <article>
+            <b>{{ report.summary.completed }}</b>
+            <span>Završeno</span>
+          </article>
+
+          <article>
+            <b>{{ report.summary.passed }}</b>
+            <span>Prošlo</span>
+          </article>
+
+          <article>
+            <b>{{ report.summary.average | number: '1.0-1' }}%</b>
+            <span>Prosjek</span>
+          </article>
+        </div>
+
+        <div class="report-table">
+          <h3>Rezultati polaznika</h3>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Polaznik</th>
+                <th>Kviz</th>
+                <th>Rezultat</th>
+                <th>Status</th>
+                <th>Datum</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              @for (a of report.attempts; track a.id) {
+                <tr>
+                  <td>{{ a.learnerEmail || 'Korisnik' }}</td>
+                  <td>{{ a.quiz.title }}</td>
+                  <td>{{ a.score | number: '1.0-1' }}%</td>
+                  <td>
+                    <span class="pill" [class.pass]="a.passed">
+                      {{ a.passed ? 'Prošao' : 'Nije prošao' }}
+                    </span>
+                  </td>
+                  <td>
+                    {{ a.completedAt | date: 'dd.MM.yyyy.' }}
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="5">Još nema pokušaja.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </main>
+  }
+}
